@@ -1,0 +1,67 @@
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; min-height: 100%; }
+body { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", Arial, sans-serif; background: #050505; color: white; overflow-x: hidden; }
+button { font: inherit; }
+.page { min-height: 100vh; display: grid; place-items: center; padding: 22px; background: radial-gradient(circle at center, #222 0, #070707 62%); }
+.game-shell { width: min(100%, 900px); }
+.stage { position: relative; width: 900px; height: 540px; max-width: 100%; aspect-ratio: 5 / 3; overflow: hidden; border-radius: 18px; border: 2px solid #3d2b13; box-shadow: 0 26px 90px rgba(0,0,0,.7); cursor: none; user-select: none; }
+.background { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.shade { position: absolute; inset: 0; background: radial-gradient(circle at 50% 55%, transparent 0 42%, rgba(0,0,0,.18) 100%); pointer-events: none; }
+.hud-box, .miss-box, .ammo-box, .streak-box { position: absolute; z-index: 90; background: rgba(9,9,8,.9); border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,.45); text-align: center; }
+.hud-title { color: #ffd21a; font-size: 18px; line-height: 1; text-shadow: 2px 2px #000; }
+.hud-title.orange { color: #ff6d23; }
+.hud-value { font-size: 42px; line-height: .98; margin-top: 4px; }
+.score { left: 16px; top: 16px; width: 116px; padding: 11px 12px; }
+.timer { left: 50%; transform: translateX(-50%); top: 16px; width: 116px; padding: 11px 12px; }
+.level { right: 16px; top: 16px; width: 116px; padding: 11px 12px; }
+.miss-box { right: 16px; top: 92px; width: 128px; padding: 10px 12px; }
+.miss-row { display: flex; justify-content: center; gap: 8px; font-size: 42px; line-height: .8; }
+.miss-on { color: #e51616; text-shadow: 2px 2px #000; }
+.miss-off { color: rgba(255,255,255,.18); }
+.ammo-box { left: 20px; bottom: 22px; padding: 12px 14px; display: flex; gap: 8px; }
+.shell { width: 13px; height: 36px; border: 2px solid rgba(255,255,255,.7); border-radius: 8px; overflow: hidden; background: #333; position: relative; }
+.shell.full { background: linear-gradient(#d9d4be 0 22%, #d81010 23% 100%); }
+.shell.empty { opacity: .28; }
+.shell-cap { position: absolute; left: 0; right: 0; top: 0; height: 8px; background: #e4dca6; }
+.streak-box { right: 24px; bottom: 22px; width: 130px; padding: 12px; }
+.streak-value { font-size: 40px; line-height: 1; }
+.crosshair { position: absolute; z-index: 120; width: 56px; height: 56px; transform: translate(-50%, -50%); pointer-events: none; border: 4px solid white; border-radius: 50%; filter: drop-shadow(0 2px 2px black); }
+.crosshair::before, .crosshair::after { content: ""; position: absolute; background: white; left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 2px black; }
+.crosshair::before { width: 76px; height: 4px; }
+.crosshair::after { width: 4px; height: 76px; }
+.shotgun { position: absolute; z-index: 100; left: 50%; bottom: -40px; width: 230px; height: 210px; transform-origin: 50% 100%; pointer-events: none; }
+.barrel { position: absolute; bottom: 0; width: 34px; height: 210px; background: linear-gradient(90deg, #111, #3b3b3b, #070707); border-radius: 18px 18px 8px 8px; box-shadow: inset 0 0 8px rgba(255,255,255,.22), 0 8px 15px rgba(0,0,0,.6); }
+.barrel-left { left: 84px; transform: rotate(-23deg); }
+.barrel-right { left: 112px; transform: rotate(-19deg); }
+.stock { position: absolute; left: 75px; bottom: 8px; width: 44px; height: 190px; background: linear-gradient(90deg, #5b3017, #9a6231, #4a260f); transform: rotate(-23deg); border-radius: 14px; }
+.hand { position: absolute; left: 44px; bottom: -2px; width: 58px; height: 92px; background: #f2bd83; border-radius: 28px 28px 8px 8px; transform: rotate(18deg); border: 3px solid #0b0b0b; }
+.target { position: absolute; z-index: 50; width: 88px; height: 112px; margin-left: -44px; margin-top: -56px; border: 0; background: transparent; padding: 0; cursor: none; transform-origin: 50% 85%; filter: drop-shadow(0 7px 8px rgba(0,0,0,.45)); }
+.target-head { position: absolute; left: 4px; top: 0; width: 80px; height: 78px; background: #f3a240; border: 3px solid #f9d5a2; border-radius: 45% 45% 48% 48%; }
+.target-body { position: absolute; left: 13px; top: 64px; width: 62px; height: 52px; background: #10183d; border-radius: 20px 20px 8px 8px; }
+.hair-main { position: absolute; left: 8px; top: -13px; width: 65px; height: 26px; background: #e7d42f; border-radius: 50% 50% 20% 30%; transform: rotate(-6deg); }
+.hair-front { position: absolute; left: 2px; top: -2px; width: 56px; height: 16px; background: #efe052; border-radius: 100% 20% 90% 20%; transform: rotate(-14deg); }
+.glasses { position: absolute; top: 28px; width: 27px; height: 21px; background: rgba(255,255,255,.88); border: 3px solid #222; }
+.glasses.left { left: 11px; }
+.glasses.right { right: 11px; }
+.glasses.right::before { content: ""; position: absolute; left: -11px; top: 7px; width: 9px; height: 3px; background: #222; }
+.eye { position: absolute; top: 35px; width: 4px; height: 4px; border-radius: 50%; background: #111; z-index: 2; }
+.eye-left { left: 26px; }
+.eye-right { right: 26px; }
+.nose { position: absolute; left: 39px; top: 44px; width: 7px; height: 12px; border-right: 2px solid #a05c2e; }
+.mouth { position: absolute; left: 29px; top: 58px; width: 24px; height: 4px; background: #34160b; border-radius: 8px; }
+.tie { position: absolute; left: 39px; top: 75px; width: 9px; height: 28px; background: #ba1212; clip-path: polygon(50% 0, 100% 45%, 50% 100%, 0 45%); }
+.splat { position: absolute; z-index: 70; width: 42px; height: 42px; margin-left: -21px; margin-top: -21px; border-radius: 50%; background: #f22626; box-shadow: 12px 2px 0 -8px #f22626, -15px -2px 0 -9px #f22626, 1px 15px 0 -9px #f22626; pointer-events: none; }
+.overlay { position: absolute; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(0,0,0,.58); backdrop-filter: blur(2px); }
+.panel { width: 360px; max-width: 90%; padding: 26px; border-radius: 18px; background: rgba(10,10,10,.92); border: 2px solid rgba(255,255,255,.15); box-shadow: 0 20px 60px rgba(0,0,0,.7); text-align: center; }
+.panel h1 { margin: 0 0 10px; font-size: 42px; color: #ffd21a; text-shadow: 3px 3px #000; }
+.panel p { margin: 10px 0; font-family: Arial, sans-serif; line-height: 1.45; }
+.panel .small { color: #ddd; }
+.panel button { margin-top: 14px; border: 0; border-radius: 12px; padding: 12px 34px; background: #e23a1a; color: white; font-size: 28px; cursor: pointer; box-shadow: 0 7px 0 #8a1c0a; }
+.panel button:active { transform: translateY(5px); box-shadow: 0 2px 0 #8a1c0a; }
+.caption { margin-top: 12px; text-align: center; color: #cfcfcf; font-family: Arial, sans-serif; }
+@media (max-width: 940px) {
+  .stage { width: 100%; height: auto; }
+  .hud-value { font-size: 30px; }
+  .hud-title { font-size: 14px; }
+  .score, .timer, .level { width: 92px; }
+}
