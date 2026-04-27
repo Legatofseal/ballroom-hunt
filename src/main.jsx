@@ -526,7 +526,13 @@ function App() {
       <div className="game-shell">
         <div
           className="stage"
-          onMouseMove={(e) => {
+          onPointerMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            const sx = STAGE_W / r.width;
+            const sy = STAGE_H / r.height;
+            setMouse({ x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy });
+          }}
+          onPointerDown={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             const sx = STAGE_W / r.width;
             const sy = STAGE_H / r.height;

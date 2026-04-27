@@ -4,7 +4,7 @@ body { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", Arial, sans-s
 button { font: inherit; }
 .page { min-height: 100vh; display: grid; place-items: center; padding: 22px; background: radial-gradient(circle at center, #222 0, #070707 62%); }
 .game-shell { width: min(100%, 900px); }
-.stage { position: relative; width: 900px; height: 540px; max-width: 100%; aspect-ratio: 5 / 3; overflow: hidden; border-radius: 18px; border: 2px solid #3d2b13; box-shadow: 0 26px 90px rgba(0,0,0,.7); cursor: none; user-select: none; }
+.stage { position: relative; touch-action: none; width: 900px; height: 540px; max-width: 100%; aspect-ratio: 5 / 3; overflow: hidden; border-radius: 18px; border: 2px solid #3d2b13; box-shadow: 0 26px 90px rgba(0,0,0,.7); cursor: none; user-select: none; }
 .background { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .shade { position: absolute; inset: 0; background: radial-gradient(circle at 50% 55%, transparent 0 42%, rgba(0,0,0,.18) 100%); pointer-events: none; }
 .hud-box, .miss-box, .ammo-box, .streak-box, .picker { position: absolute; z-index: 90; background: rgba(9,9,8,.9); border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,.45); text-align: center; }
@@ -103,4 +103,34 @@ button { font: inherit; }
   .hud-title { font-size: 14px; }
   .score, .timer, .level { width: 92px; }
   .picker { bottom: 72px; }
+}
+
+@media (max-width: 640px) {
+  .page { padding: 8px; align-items: start; }
+  .game-shell { width: 100%; }
+  .stage { border-radius: 10px; }
+  .score { left: 6px; top: 6px; width: 76px; padding: 7px 6px; }
+  .timer { top: 6px; width: 76px; padding: 7px 6px; }
+  .level { right: 6px; top: 6px; width: 76px; padding: 7px 6px; }
+  .hud-title { font-size: 11px; }
+  .hud-value { font-size: 24px; }
+  .miss-box { right: 6px; top: 60px; width: 92px; padding: 6px; }
+  .miss-row { font-size: 28px; gap: 4px; }
+  .ammo-box { left: 8px; bottom: 8px; padding: 7px; gap: 4px; }
+  .shell { width: 9px; height: 25px; }
+  .picker { bottom: 8px; padding: 6px; }
+  .picker-button { width: 30px; height: 28px; }
+  .streak-box { right: 8px; bottom: 8px; width: 86px; padding: 7px; }
+  .streak-value { font-size: 24px; }
+  .crosshair-classic { width: 42px; height: 42px; }
+  .crosshair-circle { width: 46px; height: 46px; }
+  .crosshair-star { width: 48px; height: 48px; }
+  .crosshair-square { width: 42px; height: 42px; }
+  .shotgun { width: 170px; height: 155px; bottom: -34px; }
+  .barrel { width: 24px; height: 155px; }
+  .barrel-left { left: 64px; }
+  .barrel-right { left: 84px; }
+  .stock { left: 57px; width: 32px; height: 140px; }
+  .hand { left: 30px; width: 43px; height: 70px; }
+  .caption { font-size: 12px; }
 }
