@@ -166,7 +166,7 @@ function App() {
   const spawn = (previousId = target.id) => {
     if (!running) return;
     const spot = pickSpot(previousId);
-    const ttl = Math.max(470, 1250 - level * 85);
+    const ttl = Math.max(900, 1850 - level * 95);
 
     setTarget({
       visible: true,
@@ -183,7 +183,7 @@ function App() {
       setMisses((m) => m + 1);
       setStreak(0);
       setMessage("Too slow — he ducked away.");
-      spawnTimer.current = setTimeout(() => spawn(spot.id), Math.max(240, 650 - level * 45));
+      spawnTimer.current = setTimeout(() => spawn(spot.id), Math.max(420, 900 - level * 50));
     }, ttl);
   };
 
@@ -250,7 +250,7 @@ function App() {
     setMessage(`HIT +${gained * 100}`);
     setSplatters((old) => [...old.slice(-8), { id: crypto.randomUUID(), x: target.x, y: target.y }]);
     setTarget((t) => ({ ...t, visible: false }));
-    spawnTimer.current = setTimeout(() => spawn(target.id), Math.max(180, 540 - level * 38));
+    spawnTimer.current = setTimeout(() => spawn(target.id), Math.max(350, 760 - level * 42));
   };
 
   const miss = () => {
@@ -267,7 +267,7 @@ function App() {
 
   useEffect(() => {
     if (!running) return;
-    spawnTimer.current = setTimeout(() => spawn(null), 450);
+    spawnTimer.current = setTimeout(() => spawn(null), 750);
     return clearGameTimers;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
