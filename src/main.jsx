@@ -1,248 +1,75 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { motion, AnimatePresence } from "framer-motion";
-import ballroomBackground from "./assets/ballroom-reference.png";
-import "./styles.css";
+import { AnimatePresence, motion } from "framer-motion";
+import "./style.css";
 
-const ROUND_TIME = 50;
-const MAX_MISSES = 8;
-const MAX_AMMO = 6;
-const STAGE_W = 900;
-const STAGE_H = 540;
+const GAME_W = 1536;
+const GAME_H = 1024;
+const ROUND_TIME = 60;
+const MAX_DAMAGE = 7;
 
-const SPOTS = [
-  { id: "plant", x: 214, y: 402, lean: -18, scale: 1.05 },
-  { id: "table", x: 382, y: 246, lean: 14, scale: 0.82 },
-  { id: "sofa", x: 620, y: 254, lean: -7, scale: 0.9 },
-  { id: "window", x: 754, y: 220, lean: 0, scale: 0.74 },
-  { id: "pillar", x: 836, y: 286, lean: -15, scale: 0.95 },
+const HARRISON_SPOTS = [
+  { id: "left-back", x: 335, y: 430 },
+  { id: "center-table", x: 770, y: 420 },
+  { id: "right-column", x: 1195, y: 505 },
+  { id: "front-left", x: 450, y: 760 },
+  { id: "far-right", x: 1380, y: 430 },
 ];
 
 const CROSSHAIRS = [
-  { id: "classic", name: "Classic" },
-  { id: "dot", name: "Dot" },
-  { id: "circle", name: "Circle" },
-  { id: "star", name: "Star" },
-  { id: "square", name: "Square" },
+  { id: "classic", label: "Classic" },
+  { id: "diamond", label: "Diamond" },
+  { id: "dot", label: "Dot" },
+  { id: "box", label: "Box" },
+  { id: "arcade", label: "Arcade" },
 ];
 
-function pickSpot(previousId) {
-  const pool = SPOTS.filter((s) => s.id !== previousId);
-  return pool[Math.floor(Math.random() * pool.length)];
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
 }
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
+function distance(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
-function makeTone(type) {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    if (type === "shot") {
-      osc.type = "square";
-      osc.frequency.setValueAtTime(110, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(45, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.16, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.11);
-    }
-
-    if (type === "hit") {
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(520, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(980, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.15);
-    }
-
-    if (type === "tomato") {
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(260, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.18);
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.21);
-    }
-  } catch {
-    // Audio is optional. Some browsers block WebAudio until the first user gesture.
-  }
+function Crosshair({ type, x, y, visible }) {
+  if (!visible) return null;
+  return <div className={`crosshair crosshair-${type}`} style={{ left: x, top: y }} />;
 }
 
-function HudBox({ title, value, className = "" }) {
-  return (
-    <div className={`hud-box ${className}`}>
-      <div className="hud-title">{title}</div>
-      <div className="hud-value">{value}</div>
-    </div>
-  );
-}
-
-function Ammo({ ammo }) {
-  return (
-    <div className="ammo-box">
-      {Array.from({ length: MAX_AMMO }).map((_, i) => (
-        <div key={i} className={`shell ${i < ammo ? "full" : "empty"}`}>
-          <div className="shell-cap" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Misses({ misses }) {
-  return (
-    <div className="miss-box">
-      <div className="hud-title orange">MISSES</div>
-      <div className="miss-row">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <span key={i} className={i < Math.ceil(misses / 3) ? "miss-on" : "miss-off"}>
-            ×
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Crosshair({ pos, type }) {
-  return <div className={`crosshair crosshair-${type}`} style={{ left: pos.x, top: pos.y }} />;
-}
-
-function CrosshairPicker({ selected, onSelect }) {
-  return (
-    <div className="picker">
-      <div className="picker-title">AIM</div>
-      <div className="picker-row">
-        {CROSSHAIRS.map((c) => (
-          <button
-            key={c.id}
-            className={`picker-button ${selected === c.id ? "active" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(c.id);
-            }}
-            title={c.name}
-          >
-            <span className={`picker-preview crosshair-${c.id}`} />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Shotgun({ recoil }) {
+function Tomato({ tomato }) {
+  const size = tomato.size;
   return (
     <motion.div
-      className="shotgun"
-      animate={{ y: recoil ? 18 : 0, rotate: recoil ? -2 : 0 }}
-      transition={{ duration: 0.08 }}
+      className="tomato"
+      style={{ left: tomato.x, top: tomato.y, width: size, height: size, opacity: tomato.opacity }}
+      initial={false}
+      animate={{ scale: tomato.scale, rotate: tomato.rot }}
+      transition={{ duration: 0.06 }}
     >
-      <div className="hand" />
-      <div className="barrel barrel-left" />
-      <div className="barrel barrel-right" />
-      <div className="stock" />
+      <div className="tomato-leaf" />
     </motion.div>
   );
 }
 
-function ParodyTarget({ target, onHit }) {
-  if (!target.visible) return null;
-
-  return (
-    <motion.button
-      className="target"
-      style={{ left: target.x, top: target.y, scale: target.scale }}
-      initial={{ opacity: 0, y: 38, rotate: target.lean }}
-      animate={{ opacity: 1, y: 0, rotate: target.lean }}
-      exit={{ opacity: 0, y: 42, rotate: target.lean }}
-      transition={{ type: "spring", stiffness: 380, damping: 22 }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onHit();
-      }}
-      aria-label="Cartoon parody target"
-    >
-      <div className="target-body" />
-      <div className="target-arm arm-left" />
-      <div className="target-arm arm-right" />
-      <div className="target-head">
-        <div className="hair hair-main" />
-        <div className="hair hair-front" />
-        <div className="glasses left" />
-        <div className="glasses right" />
-        <div className="eye eye-left" />
-        <div className="eye eye-right" />
-        <div className="nose" />
-        <div className="mouth" />
-      </div>
-      <div className="tie" />
-    </motion.button>
-  );
-}
-
-function Tomato({ tomato, onClick }) {
+function CharacterHitbox({ spot, onHit, visible }) {
+  if (!visible) return null;
   return (
     <button
-      className="tomato"
-      style={{ left: tomato.x, top: tomato.y, scale: tomato.scale }}
-      onClick={(e) => {
+      className="character-hitbox"
+      style={{ left: spot.x - 70, top: spot.y - 70 }}
+      onPointerDown={(e) => {
         e.stopPropagation();
-        onClick(tomato.id);
+        onHit(spot);
       }}
-      aria-label="incoming tomato"
-    >
-      <span className="tomato-leaf" />
-    </button>
-  );
-}
-
-function Splat({ splat }) {
-  return (
-    <motion.div
-      className={splat.kind === "tomato" ? "tomato-splat" : "splat"}
-      style={{ left: splat.x, top: splat.y }}
-      initial={{ scale: 0.2, opacity: 0.9 }}
-      animate={{ scale: 1.45, opacity: 0 }}
-      transition={{ duration: 0.6 }}
+      aria-label="hit character"
     />
-  );
-}
-
-function MuzzleFlash({ flash }) {
-  return <AnimatePresence>{flash && <motion.div className="muzzle-flash" initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.5 }} transition={{ duration: 0.1 }} />}</AnimatePresence>;
-}
-
-function ScreenFlash({ active }) {
-  return <AnimatePresence>{active && <motion.div className="screen-flash" initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} />}</AnimatePresence>;
-}
-
-function StartOverlay({ running, score, message, onStart }) {
-  if (running) return null;
-  return (
-    <div className="overlay">
-      <div className="panel">
-        <h1>Ballroom Hunt</h1>
-        <p>{message}</p>
-        <p className="small">Score: {score}</p>
-        <button onClick={onStart}>PLAY</button>
-      </div>
-    </div>
   );
 }
 
@@ -250,326 +77,341 @@ function App() {
   const [running, setRunning] = useState(false);
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(ROUND_TIME);
-  const [misses, setMisses] = useState(0);
-  const [ammo, setAmmo] = useState(MAX_AMMO);
-  const [streak, setStreak] = useState(0);
-  const [message, setMessage] = useState("Click PLAY and hit the cartoon parody targets as fast as possible.");
-  const [target, setTarget] = useState({ visible: false, x: 0, y: 0, id: null, born: 0, lean: 0, scale: 1 });
-  const [splatters, setSplatters] = useState([]);
-  const [tomatoes, setTomatoes] = useState([]);
-  const [mouse, setMouse] = useState({ x: 450, y: 270 });
-  const [crosshair, setCrosshair] = useState("classic");
-  const [recoil, setRecoil] = useState(false);
+  const [damage, setDamage] = useState(0);
+  const [wave, setWave] = useState(1);
+  const [message, setMessage] = useState("Press Start");
+  const [crosshair, setCrosshair] = useState("diamond");
+  const [pointer, setPointer] = useState({ x: GAME_W / 2, y: GAME_H / 2, visible: false });
   const [flash, setFlash] = useState(false);
-  const [hitFlash, setHitFlash] = useState(false);
+  const [tomatoes, setTomatoes] = useState([]);
+  const [activeSpot, setActiveSpot] = useState(HARRISON_SPOTS[1]);
+  const [soundOn, setSoundOn] = useState(true);
 
-  const spawnTimer = useRef(null);
-  const hideTimer = useRef(null);
-  const reloadTimer = useRef(null);
-  const tomatoTimer = useRef(null);
-  const raf = useRef(null);
-  const lastFrame = useRef(0);
-  const targetRef = useRef(target);
-  const mouseRef = useRef(mouse);
+  const gameRef = useRef(null);
+  const timers = useRef([]);
+  const tomatoRef = useRef([]);
+  const lastShot = useRef(0);
 
-  const level = useMemo(() => Math.min(9, 1 + Math.floor(score / 12)), [score]);
+  const difficulty = useMemo(() => 1 + Math.floor(score / 12), [score]);
 
   useEffect(() => {
-    targetRef.current = target;
-  }, [target]);
+    tomatoRef.current = tomatoes;
+  }, [tomatoes]);
 
-  useEffect(() => {
-    mouseRef.current = mouse;
-  }, [mouse]);
-
-  const clearGameTimers = () => {
-    clearTimeout(spawnTimer.current);
-    clearTimeout(hideTimer.current);
-    clearTimeout(reloadTimer.current);
-    clearTimeout(tomatoTimer.current);
-    cancelAnimationFrame(raf.current);
+  const clearAllTimers = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
   };
 
-  const spawnTomato = () => {
-    const t = targetRef.current;
-    if (!running || !t.visible) return;
-
-    const aim = mouseRef.current;
-    const dx = aim.x - t.x;
-    const dy = aim.y - t.y;
-    const len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
-    const speed = 220 + level * 28;
-
-    makeTone("tomato");
-    setTomatoes((old) => [
-      ...old.slice(-5),
-      {
-        id: crypto.randomUUID(),
-        x: t.x,
-        y: t.y + 12,
-        vx: (dx / len) * speed,
-        vy: (dy / len) * speed,
-        scale: 0.65,
-      },
-    ]);
+  const playTone = (freq, duration = 70, type = "square", volume = 0.08) => {
+    if (!soundOn) return;
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.value = volume;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
+      osc.stop(ctx.currentTime + duration / 1000);
+    } catch {
+      // Audio is optional.
+    }
   };
 
-  const scheduleTomato = () => {
-    clearTimeout(tomatoTimer.current);
-    tomatoTimer.current = setTimeout(() => {
-      spawnTomato();
-      scheduleTomato();
-    }, Math.max(520, 1200 - level * 80));
-  };
-
-  const spawn = (previousId = targetRef.current.id) => {
-    if (!running) return;
-    const spot = pickSpot(previousId);
-    const ttl = Math.max(1000, 1950 - level * 90);
-
-    setTarget({
-      visible: true,
-      x: spot.x + rand(-14, 14),
-      y: spot.y + rand(-10, 10),
-      id: spot.id,
-      born: performance.now(),
-      lean: spot.lean + rand(-4, 4),
-      scale: spot.scale,
-    });
-
-    scheduleTomato();
-
-    hideTimer.current = setTimeout(() => {
-      setTarget((t) => ({ ...t, visible: false }));
-      clearTimeout(tomatoTimer.current);
-      setMisses((m) => m + 1);
-      setStreak(0);
-      setMessage("Too slow — he ducked away.");
-      spawnTimer.current = setTimeout(() => spawn(spot.id), Math.max(520, 1000 - level * 50));
-    }, ttl);
-  };
-
-  const start = () => {
-    clearGameTimers();
+  const startGame = () => {
+    clearAllTimers();
+    setRunning(true);
     setScore(0);
     setTime(ROUND_TIME);
-    setMisses(0);
-    setAmmo(MAX_AMMO);
-    setStreak(0);
-    setSplatters([]);
+    setDamage(0);
+    setWave(1);
     setTomatoes([]);
-    setTarget({ visible: false, x: 0, y: 0, id: null, born: 0, lean: 0, scale: 1 });
-    setMessage("Fast hits give bonus points. Shoot incoming tomatoes before they splat you.");
-    setRunning(true);
+    setActiveSpot(HARRISON_SPOTS[1]);
+    setMessage("Shoot the tomatoes before they hit you.");
+    scheduleCharacterMove(600);
+    scheduleTomatoThrow(900);
   };
 
-  const stop = (text) => {
-    clearGameTimers();
+  const endGame = (text) => {
+    clearAllTimers();
     setRunning(false);
-    setTarget((t) => ({ ...t, visible: false }));
-    setTomatoes([]);
     setMessage(text);
   };
 
-  const shootVisual = () => {
-    setRecoil(true);
+  const scheduleCharacterMove = (delay) => {
+    const id = setTimeout(() => {
+      setActiveSpot((prev) => {
+        const choices = HARRISON_SPOTS.filter((s) => s.id !== prev.id);
+        return choices[Math.floor(Math.random() * choices.length)];
+      });
+      scheduleCharacterMove(Math.max(650, 1600 - difficulty * 90));
+    }, delay);
+    timers.current.push(id);
+  };
+
+  const throwTomato = () => {
+    const spot = activeSpot;
+    const targetX = GAME_W / 2 + rand(-180, 180);
+    const targetY = GAME_H - 120 + rand(-30, 40);
+    const speed = rand(0.012, 0.018) + difficulty * 0.0015;
+
+    const tomato = {
+      id: crypto.randomUUID(),
+      startX: spot.x,
+      startY: spot.y - 15,
+      targetX,
+      targetY,
+      progress: 0,
+      speed,
+      x: spot.x,
+      y: spot.y,
+      size: 34,
+      scale: 0.65,
+      rot: rand(-40, 40),
+      opacity: 1,
+    };
+
+    setTomatoes((old) => [...old, tomato]);
+  };
+
+  const scheduleTomatoThrow = (delay) => {
+    const id = setTimeout(() => {
+      if (!running) return;
+      throwTomato();
+      const nextDelay = Math.max(360, 1200 - difficulty * 90 - wave * 35 + rand(-120, 160));
+      scheduleTomatoThrow(nextDelay);
+    }, delay);
+    timers.current.push(id);
+  };
+
+  const shootAt = (point) => {
+    if (!running) return;
+    const now = performance.now();
+    if (now - lastShot.current < 90) return;
+    lastShot.current = now;
+
     setFlash(true);
-    makeTone("shot");
-    setTimeout(() => setRecoil(false), 95);
-    setTimeout(() => setFlash(false), 85);
-  };
+    setTimeout(() => setFlash(false), 55);
+    playTone(95, 55, "sawtooth", 0.09);
 
-  const reload = () => {
-    setMessage("Reloading...");
-    reloadTimer.current = setTimeout(() => {
-      setAmmo(MAX_AMMO);
-      setMessage("Reloaded.");
-    }, 750);
-  };
-
-  const consumeAmmo = () => {
-    let hadAmmo = true;
-    setAmmo((a) => {
-      if (a <= 0) {
-        hadAmmo = false;
-        return 0;
+    let hitTomato = false;
+    setTomatoes((old) => {
+      const next = [];
+      for (const tomato of old) {
+        const radius = Math.max(42, tomato.size * tomato.scale * 0.75);
+        if (!hitTomato && distance(point, tomato) <= radius) {
+          hitTomato = true;
+          setScore((s) => s + 2);
+          setMessage("Tomato splashed! +2");
+          playTone(520, 80, "triangle", 0.08);
+        } else {
+          next.push(tomato);
+        }
       }
-      const next = a - 1;
-      if (next === 0) reload();
       return next;
     });
-    return hadAmmo;
+
+    if (!hitTomato) {
+      setMessage("Miss!");
+    }
   };
 
-  const hit = () => {
-    if (!running || !target.visible) return;
-    if (!consumeAmmo()) return;
-    shootVisual();
-    makeTone("hit");
-
-    clearTimeout(hideTimer.current);
-    clearTimeout(tomatoTimer.current);
-    const reaction = performance.now() - target.born;
-    const speedBonus = reaction < 380 ? 3 : reaction < 750 ? 2 : 1;
-    const comboBonus = streak >= 4 ? 2 : streak >= 2 ? 1 : 0;
-    const gained = speedBonus + comboBonus;
-
-    setScore((s) => s + gained * 100);
-    setStreak((s) => s + 1);
-    setMessage(`HIT +${gained * 100}`);
-    setSplatters((old) => [...old.slice(-8), { id: crypto.randomUUID(), x: target.x, y: target.y, kind: "target" }]);
-    setTarget((t) => ({ ...t, visible: false }));
-    spawnTimer.current = setTimeout(() => spawn(target.id), Math.max(420, 820 - level * 42));
-  };
-
-  const hitTomato = (id) => {
+  const hitCharacter = () => {
     if (!running) return;
-    if (!consumeAmmo()) return;
-    shootVisual();
-    makeTone("hit");
-    setTomatoes((old) => {
-      const tomato = old.find((x) => x.id === id);
-      if (tomato) {
-        setSplatters((splats) => [...splats.slice(-8), { id: crypto.randomUUID(), x: tomato.x, y: tomato.y, kind: "tomato" }]);
-        setScore((s) => s + 50);
-        setMessage("Tomato blocked +50");
-      }
-      return old.filter((x) => x.id !== id);
+    setScore((s) => s + 5);
+    setMessage("Harrison ducked! +5");
+    playTone(720, 70, "triangle", 0.06);
+    setActiveSpot((prev) => {
+      const choices = HARRISON_SPOTS.filter((s) => s.id !== prev.id);
+      return choices[Math.floor(Math.random() * choices.length)];
     });
   };
 
-  const miss = () => {
-    if (!running) return;
-    if (!consumeAmmo()) {
-      setMessage("No ammo — wait for reload.");
-      return;
-    }
-    shootVisual();
-    setMisses((m) => m + 1);
-    setStreak(0);
-    setMessage("MISS");
+  const updatePointerFromEvent = (e) => {
+    const rect = gameRef.current.getBoundingClientRect();
+    const scaleX = GAME_W / rect.width;
+    const scaleY = GAME_H / rect.height;
+    setPointer({
+      x: clamp((e.clientX - rect.left) * scaleX, 0, GAME_W),
+      y: clamp((e.clientY - rect.top) * scaleY, 0, GAME_H),
+      visible: true,
+    });
+  };
+
+  const handlePointerDown = (e) => {
+    updatePointerFromEvent(e);
+    const rect = gameRef.current.getBoundingClientRect();
+    const point = {
+      x: clamp((e.clientX - rect.left) * (GAME_W / rect.width), 0, GAME_W),
+      y: clamp((e.clientY - rect.top) * (GAME_H / rect.height), 0, GAME_H),
+    };
+    shootAt(point);
   };
 
   useEffect(() => {
     if (!running) return;
-    spawnTimer.current = setTimeout(() => spawn(null), 850);
-    return clearGameTimers;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running]);
 
-  useEffect(() => {
-    if (!running) return;
-    const tick = (ts) => {
-      if (!lastFrame.current) lastFrame.current = ts;
-      const dt = Math.min(0.035, (ts - lastFrame.current) / 1000);
-      lastFrame.current = ts;
-      const aim = mouseRef.current;
-      let gotHit = false;
-
+    let raf;
+    const tick = () => {
       setTomatoes((old) => {
         const next = [];
-        for (const p of old) {
-          const nx = p.x + p.vx * dt;
-          const ny = p.y + p.vy * dt;
-          const ns = clamp(p.scale + dt * 1.3, 0.65, 1.25);
-          const dx = nx - aim.x;
-          const dy = ny - aim.y;
-          const collidesWithAim = Math.sqrt(dx * dx + dy * dy) < 34;
-          const out = nx < -80 || nx > STAGE_W + 80 || ny < -80 || ny > STAGE_H + 80;
+        let hits = 0;
 
-          if (collidesWithAim) {
-            gotHit = true;
-            setSplatters((splats) => [...splats.slice(-8), { id: crypto.randomUUID(), x: nx, y: ny, kind: "tomato" }]);
-          } else if (!out) {
-            next.push({ ...p, x: nx, y: ny, scale: ns });
+        for (const t of old) {
+          const p = t.progress + t.speed;
+          if (p >= 1) {
+            hits++;
+            continue;
           }
+
+          const arc = Math.sin(p * Math.PI) * -120;
+          const wobble = Math.sin(p * Math.PI * 6) * 12;
+          const x = t.startX + (t.targetX - t.startX) * p + wobble;
+          const y = t.startY + (t.targetY - t.startY) * p + arc;
+
+          next.push({
+            ...t,
+            progress: p,
+            x,
+            y,
+            size: 34 + p * 48,
+            scale: 0.75 + p * 1.3,
+            rot: t.rot + 9,
+            opacity: 1 - Math.max(0, p - 0.82) * 1.5,
+          });
         }
+
+        if (hits > 0) {
+          setDamage((d) => d + hits);
+          setMessage(hits > 1 ? "Tomato barrage hit you!" : "Tomato hit you!");
+          playTone(150, 120, "square", 0.08);
+        }
+
         return next;
       });
 
-      if (gotHit) {
-        setHitFlash(true);
-        setTimeout(() => setHitFlash(false), 180);
-        setMisses((m) => m + 1);
-        setStreak(0);
-        setMessage("Tomato hit you!");
-      }
-
-      raf.current = requestAnimationFrame(tick);
+      raf = requestAnimationFrame(tick);
     };
-    raf.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf.current);
-  }, [running]);
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [running, soundOn]);
 
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
       setTime((t) => {
         if (t <= 1) {
-          stop("Time is up.");
+          endGame("Time! You survived the tomato storm.");
           return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
 
   useEffect(() => {
-    if (misses >= MAX_MISSES) stop("Game over. Too many misses.");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [misses]);
+    if (damage >= MAX_DAMAGE) {
+      endGame("Game over. Too many tomato hits.");
+    }
+  }, [damage]);
+
+  useEffect(() => {
+    const newWave = 1 + Math.floor(score / 20);
+    setWave(newWave);
+  }, [score]);
 
   return (
     <div className="page">
       <div className="game-shell">
         <div
-          className="stage"
-          onPointerMove={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            const sx = STAGE_W / r.width;
-            const sy = STAGE_H / r.height;
-            setMouse({ x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy });
-          }}
-          onPointerDown={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            const sx = STAGE_W / r.width;
-            const sy = STAGE_H / r.height;
-            setMouse({ x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy });
-          }}
-          onClick={miss}
+          ref={gameRef}
+          className="game"
+          onPointerMove={updatePointerFromEvent}
+          onPointerEnter={() => setPointer((p) => ({ ...p, visible: true }))}
+          onPointerLeave={() => setPointer((p) => ({ ...p, visible: false }))}
+          onPointerDown={handlePointerDown}
         >
-          <img className="background" src={ballroomBackground} alt="cartoon ballroom background" draggable="false" />
-          <div className="shade" />
+          <img src="/ballroom.png" className="background" draggable="false" />
 
-          <HudBox title="SCORE" value={score} className="score" />
-          <HudBox title="TIME" value={time} className="timer" />
-          <HudBox title="LEVEL" value={level} className="level" />
-          <Misses misses={misses} />
-          <Ammo ammo={ammo} />
-          <div className="streak-box">
-            <div className="hud-title">STREAK</div>
-            <div className="streak-value">x {streak}</div>
+          <div className="hud hud-left">
+            <div className="label">Score</div>
+            <div className="big">{score}</div>
+            <div className="divider" />
+            <div className="label">Wave</div>
+            <div className="big">{wave}</div>
           </div>
-          <CrosshairPicker selected={crosshair} onSelect={setCrosshair} />
 
-          {splatters.map((s) => <Splat key={s.id} splat={s} />)}
-          {tomatoes.map((t) => <Tomato key={t.id} tomato={t} onClick={hitTomato} />)}
+          <div className="hud hud-center">
+            <div className="label">Time</div>
+            <div className="big">{time}</div>
+          </div>
+
+          <div className="hud hud-right">
+            <div className="label">Harrison</div>
+            <div className="hearts">{"🍅".repeat(Math.max(0, MAX_DAMAGE - damage))}</div>
+          </div>
+
+          <CharacterHitbox spot={activeSpot} visible={running} onHit={hitCharacter} />
 
           <AnimatePresence>
-            <ParodyTarget target={target} onHit={hit} />
+            {tomatoes.map((t) => (
+              <Tomato key={t.id} tomato={t} />
+            ))}
           </AnimatePresence>
 
-          <MuzzleFlash flash={flash} />
-          <ScreenFlash active={hitFlash} />
-          <Crosshair pos={mouse} type={crosshair} />
-          <Shotgun recoil={recoil} />
-          <StartOverlay running={running} score={score} message={message} onStart={start} />
+          <Crosshair type={crosshair} x={pointer.x} y={pointer.y} visible={pointer.visible && running} />
+          {flash && <div className="flash" />}
+
+          <div className="controls">
+            <div className="control-title">Crosshair</div>
+            <div className="crosshair-picker">
+              {CROSSHAIRS.map((c) => (
+                <button
+                  key={c.id}
+                  className={`pick ${crosshair === c.id ? "selected" : ""}`}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setCrosshair(c.id);
+                  }}
+                  title={c.label}
+                >
+                  <span className={`mini mini-${c.id}`} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            className="sound-btn"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setSoundOn((v) => !v);
+            }}
+          >
+            {soundOn ? "🔊" : "🔇"}
+          </button>
+
+          {!running && (
+            <div className="overlay">
+              <div className="panel">
+                <h1>Ballroom Hunt</h1>
+                <p>{message}</p>
+                <p className="small">Shoot incoming tomatoes before they reach you. Hitting Harrison gives bonus points.</p>
+                <button className="start" onPointerDown={startGame}>Start</button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="caption">
-          Choose one of five crosshairs. Hit the target, block tomatoes, and avoid empty shots.
+        <div className="mobile-note">
+          Desktop: mouse aim + click. Mobile: drag/tap. Tomatoes are valid targets while they fly toward you.
         </div>
       </div>
     </div>
