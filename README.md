@@ -1,6 +1,6 @@
-# Ballroom Hunt
+# Office Tomato Hunt
 
-A small React/Vite browser game inspired by classic Duck Hunt mechanics.
+React/Vite mini-game.
 
 ## Run locally
 
@@ -9,22 +9,18 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite, usually http://localhost:5173.
-
 ## Build
 
 ```bash
 npm run build
 ```
 
-The static site will be generated in `dist/`.
+## Azure Static Web Apps
 
-## Deploy to Azure Static Web Apps
-
-Recommended settings:
-
+Use:
 - App location: `/`
-- API location: leave empty
 - Output location: `dist`
-- Build command: `npm run build`
 
+## PayPal Donate
+
+Replace `YOUR_BUTTON_ID` in `src/App.jsx` with your PayPal donate button id.
