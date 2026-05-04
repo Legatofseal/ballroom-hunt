@@ -1,19 +1,17 @@
 {
-  "name": "office-tomato-character",
-  "version": "1.0.0",
+  "name": "office-walkabout",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "framer-motion": "latest"
+    "three": "^0.164.1"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vite": "^8.0.10"
+  }
 }

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "character-1",
+    "displayName": "Main person 1",
+    "src": "/assets/characters/main-person.jpg",
+    "position": [-4.2, 0, -2.8],
+    "scale": [1.25, 2.25],
+    "rotateY": 0.75,
+    "textureRotation": 0,
+    "color": "#c96b48"
+  },
+  {
+    "id": "character-2",
+    "displayName": "Main person 2",
+    "src": "/assets/characters/main-person.jpg",
+    "position": [4.3, 0, -2.4],
+    "scale": [1.25, 2.25],
+    "rotateY": -0.65,
+    "textureRotation": 0,
+    "color": "#c96b48"
+  },
+  {
+    "id": "character-3",
+    "displayName": "Main person 3",
+    "src": "/assets/characters/main-person.jpg",
+    "position": [-5.6, 0, 2.85],
+    "scale": [1.25, 2.25],
+    "rotateY": 2.25,
+    "textureRotation": 0,
+    "color": "#c96b48"
+  }
+]
