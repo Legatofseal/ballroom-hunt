@@ -15,6 +15,10 @@ export class FirstPersonController {
     this.walkSpeed = options.walkSpeed ?? 4.2;
     this.sprintSpeed = options.sprintSpeed ?? 6.1;
     this.alwaysEnabled = options.alwaysEnabled ?? false;
+    this.edgeLook = options.edgeLook ?? false;
+    this.edgeYaw = 0;
+    this.edgePitch = 0;
+    this.edgeMargin = 34;
     this.bounds = options.bounds;
     this.blockers = options.blockers ?? [];
     this.keys = new Set();
@@ -50,6 +54,8 @@ export class FirstPersonController {
     if (!this.enabled) {
       return;
     }
+
+    this.updateEdgeLook(delta);
 
     this.camera.getWorldDirection(this.forward);
     this.forward.y = 0;
@@ -115,8 +121,37 @@ export class FirstPersonController {
       return;
     }
 
+    if (this.edgeLook && document.pointerLockElement !== this.domElement) {
+      this.updateEdgeIntent(event.clientX, event.clientY);
+    }
+
     this.yaw -= event.movementX * 0.0023;
     this.pitch -= event.movementY * 0.002;
+    this.applyRotation();
+  }
+
+  updateEdgeIntent(x, y) {
+    const width = window.innerWidth || 1;
+    const height = window.innerHeight || 1;
+    this.edgeYaw = x >= width - this.edgeMargin ? -1 : x <= this.edgeMargin ? 1 : 0;
+    this.edgePitch = y >= height - this.edgeMargin ? -1 : y <= this.edgeMargin ? 1 : 0;
+  }
+
+  updateEdgeLook(delta) {
+    if (!this.edgeLook || document.pointerLockElement === this.domElement) {
+      return;
+    }
+
+    if (this.edgeYaw === 0 && this.edgePitch === 0) {
+      return;
+    }
+
+    this.yaw += this.edgeYaw * delta * 1.85;
+    this.pitch += this.edgePitch * delta * 1.15;
+    this.applyRotation();
+  }
+
+  applyRotation() {
     this.pitch = Math.max(-HALF_PI + 0.02, Math.min(HALF_PI - 0.02, this.pitch));
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
   }

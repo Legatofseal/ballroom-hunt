@@ -16,6 +16,14 @@
 
       <div class="hud" aria-live="polite">
         <div class="hud-block">
+          <span>Жизни</span>
+          <strong id="lives">3</strong>
+        </div>
+        <div class="hud-block">
+          <span>Здоровье</span>
+          <strong id="health">100</strong>
+        </div>
+        <div class="hud-block">
           <span>Очки</span>
           <strong id="score">0</strong>
         </div>
@@ -27,6 +35,7 @@
       </div>
 
       <div class="crosshair" aria-hidden="true"></div>
+      <div id="damageFlash" class="damage-flash" aria-hidden="true"></div>
     </div>
 
     <script type="module" src="/src/main.js"></script>
