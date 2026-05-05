@@ -17,7 +17,7 @@ const damageFlash = document.querySelector("#damageFlash");
 
 const MAX_HEALTH = 100;
 const MAX_LIVES = 3;
-const PLAYER_START = new THREE.Vector3(0, 1.72, 4.25);
+const PLAYER_START = new THREE.Vector3(0, 1.72, 7.35);
 
 const renderer = new THREE.WebGLRenderer({
   canvas,

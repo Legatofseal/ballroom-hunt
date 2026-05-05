@@ -1,46 +1,61 @@
 import * as THREE from "three";
-import { makeOfficeFallback, makeWoodTexture, loadTextureOrFallback } from "./assetTextures.js";
+import { makeWoodTexture } from "./assetTextures.js";
 
 const ROOM = {
-  width: 18,
-  depth: 12,
+  width: 16,
+  depth: 20,
   height: 3.15,
 };
 
 const materials = {};
 
 export async function createOfficeWorld(scene) {
-  scene.background = new THREE.Color("#b8c3cb");
-  scene.fog = new THREE.Fog("#c7d3dc", 16, 34);
+  const blockers = [];
+
+  scene.background = new THREE.Color("#c6d0d5");
+  scene.fog = new THREE.Fog("#cbd4d9", 18, 38);
 
   materials.floor = new THREE.MeshStandardMaterial({
     map: makeWoodTexture(),
-    roughness: 0.67,
+    roughness: 0.7,
     metalness: 0.02,
   });
   materials.floor.map.wrapS = THREE.RepeatWrapping;
   materials.floor.map.wrapT = THREE.RepeatWrapping;
-  materials.floor.map.repeat.set(7, 5);
+  materials.floor.map.repeat.set(7, 9);
 
-  materials.wall = new THREE.MeshStandardMaterial({ color: "#dce3e4", roughness: 0.78 });
-  materials.blueWall = new THREE.MeshStandardMaterial({ color: "#b8cfdd", roughness: 0.75 });
-  materials.ceiling = new THREE.MeshStandardMaterial({ color: "#c8c8c3", roughness: 0.82 });
-  materials.desk = new THREE.MeshStandardMaterial({ color: "#f1f2ef", roughness: 0.52 });
+  materials.wall = new THREE.MeshStandardMaterial({ color: "#dfe3e0", roughness: 0.8 });
+  materials.blueWall = new THREE.MeshStandardMaterial({ color: "#b9cfd8", roughness: 0.76 });
+  materials.ceiling = new THREE.MeshStandardMaterial({ color: "#c9c9c2", roughness: 0.84 });
+  materials.desk = new THREE.MeshStandardMaterial({ color: "#f0f1ed", roughness: 0.52 });
+  materials.cabinet = new THREE.MeshStandardMaterial({ color: "#e5e2d9", roughness: 0.58 });
+  materials.cardboard = new THREE.MeshStandardMaterial({ color: "#b78a5d", roughness: 0.9 });
+  materials.woodTrim = new THREE.MeshStandardMaterial({ color: "#b37b42", roughness: 0.62 });
   materials.metal = new THREE.MeshStandardMaterial({ color: "#7f8589", roughness: 0.38, metalness: 0.55 });
   materials.blackPlastic = new THREE.MeshStandardMaterial({ color: "#10161b", roughness: 0.4 });
   materials.screen = new THREE.MeshStandardMaterial({
     color: "#091016",
-    emissive: "#111e27",
-    emissiveIntensity: 0.35,
+    emissive: "#132a35",
+    emissiveIntensity: 0.42,
     roughness: 0.25,
   });
+  materials.board = new THREE.MeshStandardMaterial({ color: "#edf1ec", roughness: 0.38 });
+  materials.darkBoard = new THREE.MeshStandardMaterial({ color: "#26313a", roughness: 0.45 });
+  materials.yellow = new THREE.MeshStandardMaterial({
+    color: "#d8b337",
+    emissive: "#806200",
+    emissiveIntensity: 0.1,
+    roughness: 0.48,
+  });
+  materials.green = new THREE.MeshStandardMaterial({ color: "#45675a", roughness: 0.6 });
+  materials.couch = new THREE.MeshStandardMaterial({ color: "#373432", roughness: 0.78 });
+  materials.bin = new THREE.MeshStandardMaterial({ color: "#252b2f", roughness: 0.55, metalness: 0.16 });
 
   createShell(scene);
+  createInteriorWalls(scene, blockers);
   createCeilingGrid(scene);
   createLights(scene);
-  createWindows(scene);
-  createFurniture(scene);
-  await createOfficePhoto(scene);
+  createVideoOfficeDetails(scene, blockers);
 
   return {
     bounds: {
@@ -49,14 +64,7 @@ export async function createOfficeWorld(scene) {
       minZ: -ROOM.depth / 2 + 0.2,
       maxZ: ROOM.depth / 2 - 0.2,
     },
-    blockers: [
-      boxBlocker(-2.8, -0.6, 5.6, 1.85),
-      boxBlocker(3.7, 1.0, 5.9, 1.85),
-      boxBlocker(-7.3, -3.2, 1.2, 3.7),
-      boxBlocker(7.25, -2.8, 1.1, 5.0),
-      boxBlocker(0.0, 5.35, 16.5, 0.7),
-      boxBlocker(-8.15, 2.9, 0.7, 2.4),
-    ],
+    blockers,
   };
 }
 
@@ -76,96 +84,141 @@ function createShell(scene) {
   ceiling.position.y = ROOM.height;
   scene.add(ceiling);
 
-  const beamMaterial = new THREE.MeshStandardMaterial({ color: "#9a9d9d", roughness: 0.68 });
-  addBox(scene, [1.05, 0.22, ROOM.depth], [1.3, ROOM.height - 0.08, 0], beamMaterial);
-  addBox(scene, [ROOM.width, 0.16, 0.22], [0, ROOM.height - 0.1, -1.25], beamMaterial);
+  const beamMaterial = new THREE.MeshStandardMaterial({ color: "#a2a2a0", roughness: 0.72 });
+  addBox(scene, [ROOM.width, 0.22, 0.22], [0, ROOM.height - 0.08, 1.65], beamMaterial);
+  addBox(scene, [0.92, 0.22, 5.9], [2.7, ROOM.height - 0.08, -4.6], beamMaterial);
 }
 
-function addWall(scene, x, y, z, width, height, rotationY, material) {
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
-  wall.position.set(x, y, z);
-  wall.rotation.y = rotationY;
-  wall.receiveShadow = true;
-  scene.add(wall);
+function createInteriorWalls(scene, blockers) {
+  addBlockingBox(scene, blockers, [5.2, ROOM.height, 0.18], [-5.4, ROOM.height / 2, 1.68], materials.wall);
+  addBlockingBox(scene, blockers, [5.2, ROOM.height, 0.18], [5.4, ROOM.height / 2, 1.68], materials.wall);
+
+  addBlockingBox(scene, blockers, [0.18, ROOM.height, 1.9], [-2.35, ROOM.height / 2, 2.78], materials.wall);
+  addBlockingBox(scene, blockers, [0.18, ROOM.height, 3.15], [-2.35, ROOM.height / 2, 7.85], materials.wall);
+  addBlockingBox(scene, blockers, [0.18, ROOM.height, 1.35], [2.35, ROOM.height / 2, 2.48], materials.wall);
+  addBlockingBox(scene, blockers, [0.18, ROOM.height, 3.1], [2.35, ROOM.height / 2, 7.88], materials.wall);
+
+  addDoorTrim(scene, -2.34, 5.25, Math.PI / 2, 1.8);
+  addDoorTrim(scene, 2.34, 5.1, -Math.PI / 2, 1.8);
+  addDoorTrim(scene, -2.1, 1.68, 0, 1.55);
+  addDoorTrim(scene, 2.1, 1.68, 0, 1.55);
 }
 
 function createCeilingGrid(scene) {
   const railMaterial = new THREE.MeshStandardMaterial({ color: "#8f9290", roughness: 0.6 });
 
-  for (let x = -ROOM.width / 2; x <= ROOM.width / 2; x += 1.5) {
+  for (let x = -ROOM.width / 2; x <= ROOM.width / 2; x += 1.6) {
     addBox(scene, [0.035, 0.025, ROOM.depth], [x, ROOM.height - 0.03, 0], railMaterial);
   }
 
-  for (let z = -ROOM.depth / 2; z <= ROOM.depth / 2; z += 1.5) {
+  for (let z = -ROOM.depth / 2; z <= ROOM.depth / 2; z += 1.6) {
     addBox(scene, [ROOM.width, 0.025, 0.035], [0, ROOM.height - 0.028, z], railMaterial);
   }
 }
 
 function createLights(scene) {
-  scene.add(new THREE.HemisphereLight("#dbeeff", "#5e4e3d", 1.25));
+  scene.add(new THREE.HemisphereLight("#dbeeff", "#5f5140", 1.28));
 
-  const sun = new THREE.DirectionalLight("#ffffff", 2.2);
-  sun.position.set(-4.2, 8.5, 3.5);
+  const sun = new THREE.DirectionalLight("#ffffff", 2.1);
+  sun.position.set(-3.8, 8.5, 4.5);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   scene.add(sun);
 
   const panelMaterial = new THREE.MeshStandardMaterial({
-    color: "#fff7dd",
-    emissive: "#fff1b6",
-    emissiveIntensity: 2.4,
+    color: "#fff8dd",
+    emissive: "#fff2b8",
+    emissiveIntensity: 2.35,
     roughness: 0.2,
   });
 
   [
-    [-6, -4],
-    [-2.8, -4.2],
-    [2.6, -4.1],
-    [6.1, -4.3],
-    [-5, -0.8],
-    [2.2, -0.9],
-    [6, 1.2],
-    [-3.4, 3.2],
+    [0, 7.35],
+    [0, 4.7],
+    [-5.4, 6.6],
+    [4.9, 5.6],
+    [-5.7, -5.9],
+    [-1.9, -7.0],
+    [2.7, -6.9],
+    [6.1, -5.8],
+    [-4.9, -1.1],
+    [1.6, -1.3],
+    [5.6, -1.6],
   ].forEach(([x, z]) => {
     addBox(scene, [1.55, 0.035, 0.48], [x, ROOM.height - 0.045, z], panelMaterial);
-    const light = new THREE.PointLight("#fff7de", 0.55, 5);
-    light.position.set(x, ROOM.height - 0.2, z);
+    const light = new THREE.PointLight("#fff7de", 0.45, 5.2);
+    light.position.set(x, ROOM.height - 0.22, z);
     scene.add(light);
   });
 }
 
-function createWindows(scene) {
-  const glassMaterial = new THREE.MeshStandardMaterial({
-    color: "#dff5ff",
-    emissive: "#b9e8ff",
-    emissiveIntensity: 0.75,
-    roughness: 0.12,
-    metalness: 0.08,
-  });
-  const frameMaterial = new THREE.MeshStandardMaterial({ color: "#22313a", roughness: 0.55 });
-  const blindMaterial = new THREE.MeshStandardMaterial({ color: "#eee8dc", roughness: 0.72 });
-
-  [-5.2, -1.7, 2.3, 5.8].forEach((x, index) => {
-    addBox(scene, [2.2, 1.15, 0.04], [x, 1.86, -5.93], glassMaterial);
-    addBox(scene, [2.35, 0.08, 0.08], [x, 2.49, -5.9], frameMaterial);
-    addBox(scene, [2.35, 0.08, 0.08], [x, 1.22, -5.9], frameMaterial);
-    addBox(scene, [0.07, 1.25, 0.08], [x - 1.17, 1.86, -5.9], frameMaterial);
-    addBox(scene, [0.07, 1.25, 0.08], [x + 1.17, 1.86, -5.9], frameMaterial);
-
-    if (index !== 0) {
-      addBox(scene, [1.55, 0.78, 0.055], [x, 2.07, -5.86], blindMaterial);
-    }
-  });
+function createVideoOfficeDetails(scene, blockers) {
+  createCorridor(scene, blockers);
+  createSideRooms(scene, blockers);
+  createLab(scene, blockers);
+  createBackWall(scene);
+  createStorage(scene, blockers);
 }
 
-function createFurniture(scene) {
-  createDeskIsland(scene, -2.9, -0.8, 5.5, 1.65, 0);
-  createDeskIsland(scene, 3.9, 0.9, 5.75, 1.65, 0);
-  createDeskIsland(scene, 0.2, 5.25, 16, 0.62, 0);
-  createRack(scene, -7.55, -3.3);
-  createWhiteboard(scene);
-  createShelving(scene);
-  createBoxes(scene);
+function createCorridor(scene, blockers) {
+  createWhiteboard(scene, [-2.46, 1.55, 3.15], [0.05, 1.25, 1.85], "x");
+  createWhiteboard(scene, [2.46, 1.55, 3.15], [0.05, 1.05, 1.45], "x");
+  addCylinder(scene, 0.28, 0.52, [-1.9, 0.26, 4.2], materials.bin);
+  blockers.push(boxBlocker(-1.9, 4.2, 0.62, 0.62));
+
+  addBox(scene, [0.38, 1.7, 0.08], [0, 0.85, 9.85], materials.green);
+  addBox(scene, [1.1, 0.1, 0.08], [0, 2.2, 9.83], materials.woodTrim);
+}
+
+function createSideRooms(scene, blockers) {
+  addCouch(scene, -5.8, 6.45);
+  blockers.push(boxBlocker(-5.8, 6.45, 2.45, 1.05));
+
+  addBox(scene, [1.3, 0.12, 0.9], [4.9, 0.76, 5.15], materials.desk);
+  addMonitor(scene, 4.9, 4.8, 0.92);
+  addChair(scene, 4.9, 5.95);
+  blockers.push(boxBlocker(4.9, 5.15, 1.75, 1.45));
+}
+
+function createLab(scene, blockers) {
+  createDeskIsland(scene, -4.9, -3.35, 4.8, 1.45, 0);
+  createDeskIsland(scene, 4.5, -2.55, 4.95, 1.45, 0);
+  createDeskIsland(scene, 0.8, -7.55, 5.4, 1.35, 0);
+
+  blockers.push(boxBlocker(-4.9, -3.35, 5.2, 1.8));
+  blockers.push(boxBlocker(4.5, -2.55, 5.35, 1.85));
+  blockers.push(boxBlocker(0.8, -7.55, 5.85, 1.8));
+
+  createWhiteboard(scene, [-6.9, 1.58, -9.86], [2.55, 1.25, 0.05], "z");
+  addMarkerScribbles(scene, -6.9, -9.82);
+
+  addBox(scene, [1.15, 0.78, 0.58], [-1.7, 0.39, -6.0], materials.cabinet);
+  addBox(scene, [0.95, 0.56, 0.7], [5.75, 0.28, -5.8], materials.cardboard);
+  blockers.push(boxBlocker(-1.7, -6.0, 1.35, 0.8));
+  blockers.push(boxBlocker(5.75, -5.8, 1.15, 0.9));
+}
+
+function createBackWall(scene) {
+  addBox(scene, [1.75, 0.32, 0.42], [0, 2.88, -9.86], materials.cabinet);
+  addPlanningBoard(scene, 2.15, 1.9, -9.86);
+  addClock(scene, -2.05, 2.15, -9.84);
+  addAirConditioner(scene, -0.2, 2.82, -9.84);
+}
+
+function createStorage(scene, blockers) {
+  createTallShelf(scene, -7.35, -7.0);
+  createTallShelf(scene, 7.25, -6.7);
+  createMetalRack(scene, 7.15, -0.25);
+
+  blockers.push(boxBlocker(-7.35, -7.0, 1.05, 2.4));
+  blockers.push(boxBlocker(7.25, -6.7, 1.05, 2.6));
+  blockers.push(boxBlocker(7.15, -0.25, 1.0, 2.1));
+
+  addBox(scene, [0.95, 0.62, 0.8], [-6.9, 0.31, -0.5], materials.cardboard);
+  addBox(scene, [0.9, 0.5, 0.7], [-6.0, 0.25, -0.15], materials.cardboard);
+  addBox(scene, [1.2, 0.62, 0.85], [6.85, 0.31, 1.0], materials.cardboard);
+  blockers.push(boxBlocker(-6.45, -0.35, 1.9, 1.0));
+  blockers.push(boxBlocker(6.85, 1.0, 1.35, 1.05));
 }
 
 function createDeskIsland(scene, x, z, width, depth, rotationY) {
@@ -184,9 +237,9 @@ function createDeskIsland(scene, x, z, width, depth, rotationY) {
   legPositions.forEach(([lx, lz]) => addBox(group, [0.08, 0.74, 0.08], [lx, 0.37, lz], materials.metal));
 
   for (let i = -1; i <= 1; i += 1) {
-    addMonitor(group, i * 1.25, -depth * 0.28, 0.92);
-    addKeyboard(group, i * 1.25, depth * 0.19, 0.84);
-    addChair(group, i * 1.25, depth * 0.85);
+    addMonitor(group, i * 1.18, -depth * 0.26, 0.92);
+    addKeyboard(group, i * 1.18, depth * 0.2, 0.84);
+    addChair(group, i * 1.18, depth * 0.88);
   }
 
   scene.add(group);
@@ -213,70 +266,109 @@ function addChair(group, x, z) {
   addBox(group, [0.08, 0.48, 0.08], [x, 0.25, z], materials.metal);
 }
 
-function createRack(scene, x, z) {
-  const dark = new THREE.MeshStandardMaterial({ color: "#2d353b", roughness: 0.48, metalness: 0.25 });
-  const panel = new THREE.MeshStandardMaterial({ color: "#d9e0df", roughness: 0.44 });
+function addCouch(scene, x, z) {
+  addBox(scene, [2.35, 0.42, 0.82], [x, 0.36, z], materials.couch);
+  addBox(scene, [2.35, 0.82, 0.18], [x, 0.75, z + 0.38], materials.couch);
+  addBox(scene, [0.18, 0.55, 0.82], [x - 1.16, 0.55, z], materials.couch);
+  addBox(scene, [0.18, 0.55, 0.82], [x + 1.16, 0.55, z], materials.couch);
+}
 
-  addBox(scene, [1.15, 2.15, 1.2], [x, 1.1, z], dark);
+function createTallShelf(scene, x, z) {
+  addBox(scene, [0.9, 2.0, 1.9], [x, 1.02, z], materials.cabinet);
   for (let i = 0; i < 4; i += 1) {
-    addBox(scene, [1.05, 0.35, 0.05], [x, 0.45 + i * 0.42, z + 0.62], panel);
+    addBox(scene, [0.82, 0.05, 1.75], [x, 0.45 + i * 0.42, z], materials.metal);
+  }
+
+  for (let i = 0; i < 5; i += 1) {
+    addBox(scene, [0.34, 0.28, 0.36], [x, 0.62 + (i % 3) * 0.42, z - 0.65 + i * 0.31], materials.cardboard);
   }
 }
 
-function createWhiteboard(scene) {
-  const board = new THREE.MeshStandardMaterial({ color: "#eef2ef", roughness: 0.38 });
+function createMetalRack(scene, x, z) {
+  addBox(scene, [0.85, 1.7, 1.75], [x, 0.86, z], materials.metal);
+  addBox(scene, [0.72, 0.3, 1.35], [x, 1.55, z], materials.cardboard);
+  addBox(scene, [0.72, 0.3, 1.35], [x, 0.85, z], materials.cardboard);
+}
+
+function createWhiteboard(scene, position, size, axis) {
+  const board = addBox(scene, size, position, materials.board);
+  board.receiveShadow = true;
+
+  if (axis === "x") {
+    addBox(scene, [0.055, size[1] + 0.1, 0.055], [position[0], position[1], position[2] - size[2] / 2], materials.metal);
+    addBox(scene, [0.055, size[1] + 0.1, 0.055], [position[0], position[1], position[2] + size[2] / 2], materials.metal);
+  } else {
+    addBox(scene, [size[0] + 0.1, 0.055, 0.055], [position[0], position[1] - size[1] / 2, position[2]], materials.metal);
+    addBox(scene, [size[0] + 0.1, 0.055, 0.055], [position[0], position[1] + size[1] / 2, position[2]], materials.metal);
+  }
+}
+
+function addMarkerScribbles(scene, x, z) {
   const marker = new THREE.LineBasicMaterial({ color: "#46636c", linewidth: 2 });
-  addBox(scene, [3.35, 1.25, 0.045], [6.95, 1.65, -5.82], board);
 
   for (let i = 0; i < 5; i += 1) {
     const points = [
-      new THREE.Vector3(5.5 + i * 0.24, 1.4 + Math.sin(i) * 0.1, -5.78),
-      new THREE.Vector3(5.9 + i * 0.28, 1.7 + Math.cos(i) * 0.1, -5.78),
-      new THREE.Vector3(6.25 + i * 0.22, 1.45 + Math.sin(i * 1.7) * 0.12, -5.78),
+      new THREE.Vector3(x - 0.8 + i * 0.3, 1.45 + Math.sin(i) * 0.1, z),
+      new THREE.Vector3(x - 0.35 + i * 0.32, 1.7 + Math.cos(i) * 0.1, z),
+      new THREE.Vector3(x + 0.05 + i * 0.25, 1.48 + Math.sin(i * 1.7) * 0.12, z),
     ];
     scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), marker));
   }
 }
 
-function createShelving(scene) {
-  const shelfMaterial = new THREE.MeshStandardMaterial({ color: "#f1f2ee", roughness: 0.5 });
-  const boxMaterial = new THREE.MeshStandardMaterial({ color: "#c8c0b6", roughness: 0.83 });
+function addPlanningBoard(scene, x, y, z) {
+  addBox(scene, [5.2, 1.28, 0.05], [x, y, z], materials.darkBoard);
 
-  addBox(scene, [3.2, 0.08, 0.42], [6.95, 2.44, -5.48], shelfMaterial);
   for (let i = 0; i < 5; i += 1) {
-    addBox(scene, [0.44, 0.34, 0.34], [5.75 + i * 0.55, 2.67, -5.48], boxMaterial);
+    addBox(scene, [4.85, 0.045, 0.07], [x, y - 0.47 + i * 0.24, z + 0.02], materials.yellow);
+  }
+
+  for (let i = 0; i < 8; i += 1) {
+    const color = i % 3 === 0 ? materials.green : i % 3 === 1 ? materials.cabinet : materials.cardboard;
+    addBox(scene, [0.42, 0.14, 0.065], [x - 2.1 + i * 0.6, y + 0.4 - (i % 2) * 0.24, z + 0.04], color);
   }
 }
 
-function createBoxes(scene) {
-  const cardboard = new THREE.MeshStandardMaterial({ color: "#b48a61", roughness: 0.9 });
-  const plastic = new THREE.MeshStandardMaterial({
-    color: "#d7edf0",
-    transparent: true,
-    opacity: 0.5,
-    roughness: 0.25,
-  });
+function addClock(scene, x, y, z) {
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.28, 0.035, 8, 32),
+    new THREE.MeshStandardMaterial({ color: "#111518", roughness: 0.42 }),
+  );
+  rim.position.set(x, y, z);
+  scene.add(rim);
 
-  addBox(scene, [0.78, 0.64, 0.92], [-2.8, 0.32, 3.4], cardboard);
-  addBox(scene, [0.9, 0.48, 0.6], [-1.6, 0.24, 3.9], plastic);
-  addBox(scene, [1.0, 0.42, 0.8], [5.65, 0.21, 4.7], plastic);
-  addBox(scene, [1.5, 0.55, 0.62], [7.45, 0.28, 2.7], cardboard);
+  const face = new THREE.Mesh(
+    new THREE.CircleGeometry(0.25, 32),
+    new THREE.MeshStandardMaterial({ color: "#f6f6ee", roughness: 0.5 }),
+  );
+  face.position.set(x, y, z + 0.012);
+  scene.add(face);
+
+  addBox(scene, [0.03, 0.2, 0.02], [x, y + 0.08, z + 0.03], materials.blackPlastic);
+  addBox(scene, [0.16, 0.03, 0.02], [x + 0.07, y, z + 0.03], materials.blackPlastic);
 }
 
-async function createOfficePhoto(scene) {
-  const fallback = makeOfficeFallback();
-  const texture = await loadTextureOrFallback("/assets/office/open-office.jpg", fallback);
-  const material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.92), material);
-  mesh.position.set(-6.85, 1.62, 5.82);
-  mesh.rotation.y = Math.PI;
-  scene.add(mesh);
+function addAirConditioner(scene, x, y, z) {
+  addBox(scene, [1.6, 0.34, 0.24], [x, y, z], materials.cabinet);
+  addBox(scene, [1.45, 0.04, 0.05], [x, y - 0.13, z + 0.08], materials.metal);
+}
 
-  const frame = new THREE.MeshStandardMaterial({ color: "#20252a", roughness: 0.5 });
-  addBox(scene, [3.55, 0.08, 0.08], [-6.85, 2.62, 5.78], frame);
-  addBox(scene, [3.55, 0.08, 0.08], [-6.85, 0.62, 5.78], frame);
-  addBox(scene, [0.08, 2.05, 0.08], [-8.65, 1.62, 5.78], frame);
-  addBox(scene, [0.08, 2.05, 0.08], [-5.05, 1.62, 5.78], frame);
+function addDoorTrim(scene, x, z, rotationY, width) {
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+  group.rotation.y = rotationY;
+  addBox(group, [0.08, 2.35, 0.08], [-width / 2, 1.18, 0], materials.woodTrim);
+  addBox(group, [0.08, 2.35, 0.08], [width / 2, 1.18, 0], materials.woodTrim);
+  addBox(group, [width + 0.08, 0.1, 0.08], [0, 2.35, 0], materials.woodTrim);
+  scene.add(group);
+}
+
+function addWall(scene, x, y, z, width, height, rotationY, material) {
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+  wall.position.set(x, y, z);
+  wall.rotation.y = rotationY;
+  wall.receiveShadow = true;
+  scene.add(wall);
 }
 
 function addBox(parent, size, position, material) {
@@ -285,6 +377,20 @@ function addBox(parent, size, position, material) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+  return mesh;
+}
+
+function addBlockingBox(scene, blockers, size, position, material) {
+  addBox(scene, size, position, material);
+  blockers.push(boxBlocker(position[0], position[2], size[0], size[2]));
+}
+
+function addCylinder(scene, radius, height, position, material) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.86, height, 24), material);
+  mesh.position.set(position[0], position[1], position[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
   return mesh;
 }
 
