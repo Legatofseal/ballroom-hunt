@@ -14,7 +14,8 @@ export class Shooter {
 
   fire() {
     this.raycaster.setFromCamera({ x: 0, y: 0 }, this.camera);
-    const hit = this.raycaster.intersectObjects(this.targets, false)[0];
+    const liveTargets = this.targets.filter((target) => !target.userData.dead);
+    const hit = this.raycaster.intersectObjects(liveTargets, false)[0];
     const endPoint = new THREE.Vector3();
 
     if (hit) {

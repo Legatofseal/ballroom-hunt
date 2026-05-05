@@ -12,6 +12,7 @@ const livesNode = document.querySelector("#lives");
 const healthNode = document.querySelector("#health");
 const scoreNode = document.querySelector("#score");
 const hitsNode = document.querySelector("#hits");
+const killsNode = document.querySelector("#kills");
 const damageFlash = document.querySelector("#damageFlash");
 
 const MAX_HEALTH = 100;
@@ -38,6 +39,7 @@ scene.add(camera);
 
 let score = 0;
 let hits = 0;
+let kills = 0;
 let health = MAX_HEALTH;
 let lives = MAX_LIVES;
 let enemyHits = 0;
@@ -67,7 +69,14 @@ async function boot() {
     score += 10;
     hitsNode.textContent = String(hits);
     scoreNode.textContent = String(score);
-    registerCharacterHit(target, clock.elapsedTime);
+    const killed = registerCharacterHit(target, clock.elapsedTime);
+
+    if (killed) {
+      kills += 1;
+      score += 50;
+      killsNode.textContent = String(kills);
+      scoreNode.textContent = String(score);
+    }
   });
 
   startButton.addEventListener("click", () => {
@@ -89,7 +98,34 @@ async function boot() {
     window.__officeWalkaboutDebug = {
       getCameraPosition: () => camera.position.toArray(),
       getCameraForward: () => camera.getWorldDirection(cameraForward).toArray(),
-      getStats: () => ({ score, hits, health, lives, enemyHits, shotsFired }),
+      getStats: () => ({ score, hits, kills, health, lives, enemyHits, shotsFired }),
+      getTargets: () =>
+        targets.map((target) => ({
+          id: target.userData.id,
+          dead: target.userData.dead,
+          health: target.userData.health,
+          visible: target.userData.root.visible,
+          position: target.userData.root.position.toArray(),
+        })),
+      damageFirstEnemy: () => {
+        const target = targets.find((candidate) => !candidate.userData.dead);
+        if (!target) return false;
+
+        hits += 1;
+        score += 10;
+        hitsNode.textContent = String(hits);
+        scoreNode.textContent = String(score);
+        const killed = registerCharacterHit(target, clock.elapsedTime);
+
+        if (killed) {
+          kills += 1;
+          score += 50;
+          killsNode.textContent = String(kills);
+          scoreNode.textContent = String(score);
+        }
+
+        return killed;
+      },
     };
   }
 
@@ -158,8 +194,10 @@ function loseLife(elapsed) {
     lives = MAX_LIVES;
     score = 0;
     hits = 0;
+    kills = 0;
     scoreNode.textContent = String(score);
     hitsNode.textContent = String(hits);
+    killsNode.textContent = String(kills);
   }
 
   updateHud();

@@ -9,6 +9,7 @@ const projectileMaterial = new THREE.MeshStandardMaterial({
   emissiveIntensity: 2.4,
   roughness: 0.18,
 });
+const RESPAWN_DELAY = 2.8;
 
 const DEFAULT_CHARACTERS = [
   {
@@ -80,6 +81,8 @@ export async function createCharacters(scene) {
     panel.castShadow = true;
     panel.userData.target = true;
     panel.userData.health = 3;
+    panel.userData.dead = false;
+    panel.userData.respawnAt = 0;
     panel.userData.id = config.id;
     panel.userData.displayName = config.displayName;
     panel.userData.root = standee;
@@ -108,6 +111,14 @@ export function updateCharacters(targets, elapsed, delta = 0, options = {}) {
   for (const target of targets) {
     const root = target.userData.root;
     const ai = target.userData.ai;
+
+    if (target.userData.dead) {
+      if (elapsed >= target.userData.respawnAt) {
+        respawnCharacter(target, elapsed, options);
+      }
+      continue;
+    }
+
     const hitUntil = target.userData.hitUntil ?? 0;
     const recovering = hitUntil > elapsed;
     target.material.emissive = target.material.emissive ?? new THREE.Color("#000000");
@@ -122,14 +133,56 @@ export function updateCharacters(targets, elapsed, delta = 0, options = {}) {
 }
 
 export function registerCharacterHit(target, elapsed) {
+  if (target.userData.dead) {
+    return false;
+  }
+
   target.userData.health -= 1;
   target.userData.hitUntil = elapsed + 0.16;
 
   if (target.userData.health <= 0) {
-    target.userData.health = 3;
-    target.userData.root.rotation.y += Math.PI;
-    target.userData.root.position.x += Math.sin(elapsed * 3.1) * 0.28;
-    target.userData.ai.nextShotAt = elapsed + 1.2;
+    killCharacter(target, elapsed);
+    return true;
+  }
+
+  return false;
+}
+
+function killCharacter(target, elapsed) {
+  const root = target.userData.root;
+  const ai = target.userData.ai;
+
+  target.userData.dead = true;
+  target.userData.respawnAt = elapsed + RESPAWN_DELAY + Math.random() * 1.2;
+  root.visible = false;
+  root.rotation.z = 0;
+
+  if (ai) {
+    ai.destination = null;
+    ai.nextShotAt = target.userData.respawnAt + 0.8;
+  }
+}
+
+function respawnCharacter(target, elapsed, options = {}) {
+  const root = target.userData.root;
+  const ai = target.userData.ai;
+  const radius = ai?.radius ?? 0.55;
+  const spawnPosition = options.bounds
+    ? pickDestination(root.position, options.bounds, options.blockers, radius)
+    : root.position.clone();
+
+  root.position.set(spawnPosition.x, 0, spawnPosition.z);
+  root.visible = true;
+  root.rotation.z = 0;
+
+  target.userData.dead = false;
+  target.userData.health = 3;
+  target.userData.hitUntil = elapsed + 0.2;
+
+  if (ai) {
+    ai.destination = options.bounds ? pickDestination(root.position, options.bounds, options.blockers, radius) : null;
+    ai.nextTargetAt = elapsed + 1.5;
+    ai.nextShotAt = elapsed + 1.4 + Math.random() * 1.4;
   }
 }
 
