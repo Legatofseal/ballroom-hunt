@@ -14,10 +14,14 @@ const scoreNode = document.querySelector("#score");
 const hitsNode = document.querySelector("#hits");
 const killsNode = document.querySelector("#kills");
 const damageFlash = document.querySelector("#damageFlash");
+const moveStick = document.querySelector("#moveStick");
+const moveKnob = document.querySelector("#moveKnob");
+const fireButton = document.querySelector("#fireButton");
 
 const MAX_HEALTH = 100;
 const MAX_LIVES = 3;
 const PLAYER_START = new THREE.Vector3(0, 1.72, 7.35);
+const isTouchDevice = navigator.maxTouchPoints > 0 || window.matchMedia("(pointer: coarse)").matches;
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -56,12 +60,15 @@ const clock = new THREE.Clock();
 async function boot() {
   worldState = await createOfficeWorld(scene);
   targets = await createCharacters(scene);
+  app.classList.toggle("is-touch-device", isTouchDevice);
 
   controller = new FirstPersonController(camera, canvas, {
     bounds: worldState.bounds,
     blockers: worldState.blockers,
-    alwaysEnabled: previewMode,
+    alwaysEnabled: previewMode || isTouchDevice,
     edgeLook: previewMode,
+    touchStick: moveStick,
+    touchKnob: moveKnob,
   });
 
   shooter = new Shooter(scene, camera, targets, (target) => {
@@ -80,6 +87,13 @@ async function boot() {
   });
 
   startButton.addEventListener("click", () => {
+    if (isTouchDevice) {
+      controller.enable();
+      startButton.classList.add("is-hidden");
+      app.classList.add("is-game-active");
+      return;
+    }
+
     controller.requestLock();
   });
 
@@ -131,16 +145,37 @@ async function boot() {
   }
 
   window.addEventListener("mousedown", (event) => {
+    if (event.target.closest?.(".touch-controls")) {
+      return;
+    }
+
     const canFire = previewMode || document.pointerLockElement === canvas;
     if (canFire && event.button === 0) {
-      shotsFired += 1;
-      shooter.fire();
+      fireWeapon();
+    }
+  });
+
+  fireButton.addEventListener("pointerdown", (event) => {
+    if (!isTouchDevice) return;
+
+    event.preventDefault();
+    fireWeapon();
+  });
+
+  window.addEventListener("contextmenu", (event) => {
+    if (isTouchDevice) {
+      event.preventDefault();
     }
   });
 
   window.addEventListener("resize", resize);
 
   renderer.setAnimationLoop(tick);
+}
+
+function fireWeapon() {
+  shotsFired += 1;
+  shooter.fire();
 }
 
 function tick() {

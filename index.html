@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <title>Office Walkabout</title>
   </head>
   <body>
@@ -40,6 +40,13 @@
 
       <div class="crosshair" aria-hidden="true"></div>
       <div id="damageFlash" class="damage-flash" aria-hidden="true"></div>
+
+      <div class="touch-controls" aria-hidden="true">
+        <div id="moveStick" class="touch-stick" aria-label="Move">
+          <div id="moveKnob" class="touch-knob"></div>
+        </div>
+        <button id="fireButton" class="touch-fire" type="button" aria-label="Fire">FIRE</button>
+      </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

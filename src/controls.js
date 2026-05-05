@@ -19,6 +19,14 @@ export class FirstPersonController {
     this.edgeYaw = 0;
     this.edgePitch = 0;
     this.edgeMargin = 34;
+    this.touchStick = options.touchStick;
+    this.touchKnob = options.touchKnob;
+    this.touchMove = new THREE.Vector2();
+    this.touchStickPointerId = null;
+    this.touchStickRadius = 48;
+    this.touchLookPointerId = null;
+    this.touchLookX = 0;
+    this.touchLookY = 0;
     this.bounds = options.bounds;
     this.blockers = options.blockers ?? [];
     this.keys = new Set();
@@ -32,15 +40,36 @@ export class FirstPersonController {
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
     this.onPointerLockChange = this.onPointerLockChange.bind(this);
+    this.onTouchStickDown = this.onTouchStickDown.bind(this);
+    this.onTouchStickMove = this.onTouchStickMove.bind(this);
+    this.onTouchStickEnd = this.onTouchStickEnd.bind(this);
+    this.onTouchLookDown = this.onTouchLookDown.bind(this);
+    this.onTouchLookMove = this.onTouchLookMove.bind(this);
+    this.onTouchLookEnd = this.onTouchLookEnd.bind(this);
 
     document.addEventListener("mousemove", this.onMouseMove);
     document.addEventListener("keydown", this.onKeyDown);
     document.addEventListener("keyup", this.onKeyUp);
     document.addEventListener("pointerlockchange", this.onPointerLockChange);
+    this.domElement.addEventListener("pointerdown", this.onTouchLookDown);
+    this.domElement.addEventListener("pointermove", this.onTouchLookMove);
+    this.domElement.addEventListener("pointerup", this.onTouchLookEnd);
+    this.domElement.addEventListener("pointercancel", this.onTouchLookEnd);
+
+    if (this.touchStick) {
+      this.touchStick.addEventListener("pointerdown", this.onTouchStickDown);
+      this.touchStick.addEventListener("pointermove", this.onTouchStickMove);
+      this.touchStick.addEventListener("pointerup", this.onTouchStickEnd);
+      this.touchStick.addEventListener("pointercancel", this.onTouchStickEnd);
+    }
   }
 
   requestLock() {
     this.domElement.requestPointerLock();
+  }
+
+  enable() {
+    this.enabled = true;
   }
 
   dispose() {
@@ -48,6 +77,17 @@ export class FirstPersonController {
     document.removeEventListener("keydown", this.onKeyDown);
     document.removeEventListener("keyup", this.onKeyUp);
     document.removeEventListener("pointerlockchange", this.onPointerLockChange);
+    this.domElement.removeEventListener("pointerdown", this.onTouchLookDown);
+    this.domElement.removeEventListener("pointermove", this.onTouchLookMove);
+    this.domElement.removeEventListener("pointerup", this.onTouchLookEnd);
+    this.domElement.removeEventListener("pointercancel", this.onTouchLookEnd);
+
+    if (this.touchStick) {
+      this.touchStick.removeEventListener("pointerdown", this.onTouchStickDown);
+      this.touchStick.removeEventListener("pointermove", this.onTouchStickMove);
+      this.touchStick.removeEventListener("pointerup", this.onTouchStickEnd);
+      this.touchStick.removeEventListener("pointercancel", this.onTouchStickEnd);
+    }
   }
 
   update(delta) {
@@ -67,6 +107,8 @@ export class FirstPersonController {
     if (this.keys.has("KeyS")) this.move.sub(this.forward);
     if (this.keys.has("KeyA")) this.move.sub(this.right);
     if (this.keys.has("KeyD")) this.move.add(this.right);
+    if (this.touchMove.y !== 0) this.move.addScaledVector(this.forward, this.touchMove.y);
+    if (this.touchMove.x !== 0) this.move.addScaledVector(this.right, this.touchMove.x);
 
     if (this.move.lengthSq() === 0) {
       return;
@@ -166,5 +208,82 @@ export class FirstPersonController {
 
   onPointerLockChange() {
     this.enabled = this.alwaysEnabled || document.pointerLockElement === this.domElement;
+  }
+
+  onTouchStickDown(event) {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+
+    this.touchStickPointerId = event.pointerId;
+    this.touchStick.setPointerCapture(event.pointerId);
+    this.updateTouchStick(event);
+    event.preventDefault();
+  }
+
+  onTouchStickMove(event) {
+    if (event.pointerId !== this.touchStickPointerId) return;
+
+    this.updateTouchStick(event);
+    event.preventDefault();
+  }
+
+  onTouchStickEnd(event) {
+    if (event.pointerId !== this.touchStickPointerId) return;
+
+    this.touchStickPointerId = null;
+    this.touchMove.set(0, 0);
+    this.setTouchKnob(0, 0);
+    event.preventDefault();
+  }
+
+  updateTouchStick(event) {
+    const rect = this.touchStick.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const deltaX = event.clientX - centerX;
+    const deltaY = event.clientY - centerY;
+    const distance = Math.min(this.touchStickRadius, Math.hypot(deltaX, deltaY));
+    const angle = Math.atan2(deltaY, deltaX);
+    const knobX = Math.cos(angle) * distance;
+    const knobY = Math.sin(angle) * distance;
+
+    this.touchMove.set(knobX / this.touchStickRadius, -knobY / this.touchStickRadius);
+    this.setTouchKnob(knobX, knobY);
+  }
+
+  setTouchKnob(x, y) {
+    if (this.touchKnob) {
+      this.touchKnob.style.transform = `translate(${x}px, ${y}px)`;
+    }
+  }
+
+  onTouchLookDown(event) {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    if (event.clientX < window.innerWidth * 0.42) return;
+
+    this.touchLookPointerId = event.pointerId;
+    this.touchLookX = event.clientX;
+    this.touchLookY = event.clientY;
+    this.domElement.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  onTouchLookMove(event) {
+    if (event.pointerId !== this.touchLookPointerId) return;
+
+    const deltaX = event.clientX - this.touchLookX;
+    const deltaY = event.clientY - this.touchLookY;
+    this.touchLookX = event.clientX;
+    this.touchLookY = event.clientY;
+    this.yaw -= deltaX * 0.006;
+    this.pitch -= deltaY * 0.0052;
+    this.applyRotation();
+    event.preventDefault();
+  }
+
+  onTouchLookEnd(event) {
+    if (event.pointerId === this.touchLookPointerId) {
+      this.touchLookPointerId = null;
+      event.preventDefault();
+    }
   }
 }
