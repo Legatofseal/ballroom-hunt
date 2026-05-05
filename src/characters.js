@@ -10,6 +10,9 @@ const projectileMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.18,
 });
 const RESPAWN_DELAY = 2.8;
+const DEFAULT_HEALTH = 3;
+const DEFAULT_DAMAGE = 10;
+const DEFAULT_KILL_BONUS = 50;
 
 const DEFAULT_CHARACTERS = [
   {
@@ -42,6 +45,38 @@ const DEFAULT_CHARACTERS = [
     textureRotation: 0,
     color: "#c96b48",
   },
+  {
+    id: "lizard-character-1",
+    type: "lizard",
+    displayName: "Lizard person 1",
+    src: "/assets/characters/lizard-person.jpg",
+    position: [1.0, 0, -4.95],
+    scale: [1.28, 2.35],
+    rotateY: 0.2,
+    textureRotation: 0,
+    color: "#7d4739",
+    health: 4,
+    speed: 1.18,
+    damage: 15,
+    scoreBonus: 80,
+    projectileColor: "#ffd35a",
+  },
+  {
+    id: "lizard-character-2",
+    type: "lizard",
+    displayName: "Lizard person 2",
+    src: "/assets/characters/lizard-person.jpg",
+    position: [6.25, 0, -5.15],
+    scale: [1.28, 2.35],
+    rotateY: -0.55,
+    textureRotation: 0,
+    color: "#7d4739",
+    health: 4,
+    speed: 1.14,
+    damage: 15,
+    scoreBonus: 80,
+    projectileColor: "#ffd35a",
+  },
 ];
 
 export async function createCharacters(scene) {
@@ -72,17 +107,22 @@ export async function createCharacters(scene) {
       destination: null,
       nextTargetAt: 0,
       nextShotAt: 1.2 + index * 0.55,
-      speed: 1.35 + index * 0.16,
-      radius: 0.56,
+      speed: config.speed ?? 1.35 + index * 0.16,
+      radius: config.radius ?? 0.56,
+      damage: config.damage ?? DEFAULT_DAMAGE,
+      projectileColor: config.projectileColor ?? "#ff5b3d",
     };
 
     const panel = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
     panel.position.y = height / 2;
     panel.castShadow = true;
     panel.userData.target = true;
-    panel.userData.health = 3;
+    panel.userData.type = config.type ?? "basic";
+    panel.userData.maxHealth = config.health ?? DEFAULT_HEALTH;
+    panel.userData.health = panel.userData.maxHealth;
     panel.userData.dead = false;
     panel.userData.respawnAt = 0;
+    panel.userData.scoreBonus = config.scoreBonus ?? DEFAULT_KILL_BONUS;
     panel.userData.id = config.id;
     panel.userData.displayName = config.displayName;
     panel.userData.root = standee;
@@ -91,7 +131,7 @@ export async function createCharacters(scene) {
 
     const base = new THREE.Mesh(
       new THREE.CylinderGeometry(width * 0.38, width * 0.44, 0.08, 24),
-      new THREE.MeshStandardMaterial({ color: "#252b30", roughness: 0.54, metalness: 0.2 }),
+      new THREE.MeshStandardMaterial({ color: config.baseColor ?? "#252b30", roughness: 0.54, metalness: 0.2 }),
     );
     base.position.y = 0.04;
     base.castShadow = true;
@@ -176,7 +216,7 @@ function respawnCharacter(target, elapsed, options = {}) {
   root.rotation.z = 0;
 
   target.userData.dead = false;
-  target.userData.health = 3;
+  target.userData.health = target.userData.maxHealth ?? DEFAULT_HEALTH;
   target.userData.hitUntil = elapsed + 0.2;
 
   if (ai) {
@@ -277,10 +317,12 @@ function fireEnemyProjectile(root, target, playerPosition, scene) {
   direction.normalize();
 
   const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial.clone());
+  projectile.material.color.set(target.userData.ai.projectileColor ?? "#ff5b3d");
+  projectile.material.emissive.set(target.userData.ai.projectileColor ?? "#ff2c16");
   projectile.position.copy(start).addScaledVector(direction, 0.35);
   projectile.userData.velocity = direction.multiplyScalar(6.2);
   projectile.userData.life = 2.1;
-  projectile.userData.damage = 10;
+  projectile.userData.damage = target.userData.ai.damage ?? DEFAULT_DAMAGE;
   projectile.userData.owner = target.userData.id;
   scene.add(projectile);
   enemyProjectiles.push(projectile);

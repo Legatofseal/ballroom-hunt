@@ -73,7 +73,7 @@ async function boot() {
 
     if (killed) {
       kills += 1;
-      score += 50;
+      score += target.userData.scoreBonus ?? 50;
       killsNode.textContent = String(kills);
       scoreNode.textContent = String(score);
     }
@@ -102,6 +102,7 @@ async function boot() {
       getTargets: () =>
         targets.map((target) => ({
           id: target.userData.id,
+          type: target.userData.type,
           dead: target.userData.dead,
           health: target.userData.health,
           visible: target.userData.root.visible,
@@ -119,7 +120,7 @@ async function boot() {
 
         if (killed) {
           kills += 1;
-          score += 50;
+          score += target.userData.scoreBonus ?? 50;
           killsNode.textContent = String(kills);
           scoreNode.textContent = String(score);
         }

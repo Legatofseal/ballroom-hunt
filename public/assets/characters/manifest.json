@@ -28,5 +28,37 @@
     "rotateY": 2.25,
     "textureRotation": 0,
     "color": "#c96b48"
+  },
+  {
+    "id": "lizard-character-1",
+    "type": "lizard",
+    "displayName": "Lizard person 1",
+    "src": "/assets/characters/lizard-person.jpg",
+    "position": [1.0, 0, -4.95],
+    "scale": [1.28, 2.35],
+    "rotateY": 0.2,
+    "textureRotation": 0,
+    "color": "#7d4739",
+    "health": 4,
+    "speed": 1.18,
+    "damage": 15,
+    "scoreBonus": 80,
+    "projectileColor": "#ffd35a"
+  },
+  {
+    "id": "lizard-character-2",
+    "type": "lizard",
+    "displayName": "Lizard person 2",
+    "src": "/assets/characters/lizard-person.jpg",
+    "position": [6.25, 0, -5.15],
+    "scale": [1.28, 2.35],
+    "rotateY": -0.55,
+    "textureRotation": 0,
+    "color": "#7d4739",
+    "health": 4,
+    "speed": 1.14,
+    "damage": 15,
+    "scoreBonus": 80,
+    "projectileColor": "#ffd35a"
   }
 ]
